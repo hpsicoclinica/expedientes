@@ -147,7 +147,8 @@ select { appearance: none; background-image: url("data:image/svg+xml,%3Csvg xmln
   <div class="topbar-actions">
     <button class="btn-icon" onclick="exportarDatos()">💾 Respaldo</button>
     <button class="btn-icon" onclick="document.getElementById('importar-input').click()">📂 Fusionar</button>
-    <button class="btn-icon" onclick="document.getElementById('reemplazar-input').click()" style="background:rgba(192,57,43,0.5);">🔄 Reemplazar</button>
+    <button class="btn-icon" onclick="subirGitHub()" style="background:rgba(255,255,255,0.25);">☁️ Subir</button>
+    <button class="btn-icon" onclick="bajarGitHub()" style="background:rgba(255,255,255,0.25);">⬇️ Bajar</button>
     <input type="file" id="importar-input" accept=".json" style="display:none" onchange="importarDatos(event)">
     <input type="file" id="reemplazar-input" accept=".json" style="display:none" onchange="reemplazarDatos(event)">
   </div>
@@ -900,6 +901,123 @@ function exportarPDF() {
 document.getElementById('modal-paciente').addEventListener('click', function(e) { if(e.target===this) cerrarModal(); });
 renderInicio();
 renderPsicologo();
+
+// ===================== GITHUB SYNC =====================
+const GH_USER = 'hpsicoclinica';
+const GH_REPO = 'expedientes';
+const GH_FILE = 'datos_expedientes.json';
+const GH_API  = 'https://api.github.com/repos/' + GH_USER + '/' + GH_REPO + '/contents/' + GH_FILE;
+
+function getToken() { return localStorage.getItem('gh_token') || ''; }
+
+function abrirModalGitHub(modo) {
+  document.getElementById('gh-modo').value = modo;
+  document.getElementById('gh-token-input').value = getToken();
+  const desc = modo === 'subir'
+    ? 'Sube tus datos actuales a GitHub. Sobreescribe el respaldo anterior en la nube.'
+    : 'Descarga el respaldo de GitHub y lo fusiona con tus datos locales.';
+  document.getElementById('gh-descripcion').textContent = desc;
+  document.getElementById('modal-github').classList.add('open');
+}
+
+function cerrarModalGitHub() { document.getElementById('modal-github').classList.remove('open'); }
+
+async function ejecutarSync() {
+  const token = document.getElementById('gh-token-input').value.trim();
+  const modo  = document.getElementById('gh-modo').value;
+  if (!token) { alert('Ingresa tu token de GitHub para continuar.'); return; }
+  localStorage.setItem('gh_token', token);
+  cerrarModalGitHub();
+  const sel = modo === 'subir' ? '[onclick="subirGitHub()"]' : '[onclick="bajarGitHub()"]';
+  const btn = document.querySelector(sel);
+  const orig = btn.innerHTML; btn.innerHTML = '⏳'; btn.disabled = true;
+  try {
+    if (modo === 'subir') { await subirArchivoGitHub(token); }
+    else { await bajarArchivoGitHub(token); }
+  } catch(e) {
+    alert('Error de sincronizacion:\n' + e.message);
+  } finally { btn.innerHTML = orig; btn.disabled = false; }
+}
+
+async function subirArchivoGitHub(token) {
+  let sha = null;
+  try {
+    const check = await fetch(GH_API, { headers: { 'Authorization': 'token ' + token, 'Accept': 'application/vnd.github.v3+json' } });
+    if (check.ok) { const d = await check.json(); sha = d.sha; }
+  } catch(e) {}
+  const contenido = JSON.stringify(db, null, 2);
+  const base64 = btoa(unescape(encodeURIComponent(contenido)));
+  const body = { message: 'Respaldo ' + new Date().toLocaleString('es-MX'), content: base64, ...(sha ? { sha } : {}) };
+  const res = await fetch(GH_API, {
+    method: 'PUT',
+    headers: { 'Authorization': 'token ' + token, 'Accept': 'application/vnd.github.v3+json', 'Content-Type': 'application/json' },
+    body: JSON.stringify(body)
+  });
+  if (!res.ok) { const err = await res.json(); throw new Error(err.message || 'No se pudo subir. Verifica tu token.'); }
+  alert('Respaldo subido a GitHub correctamente.\n' + db.pacientes.length + ' paciente(s) en la nube.');
+}
+
+async function bajarArchivoGitHub(token) {
+  const res = await fetch(GH_API, { headers: { 'Authorization': 'token ' + token, 'Accept': 'application/vnd.github.v3+json' } });
+  if (!res.ok) {
+    if (res.status === 404) throw new Error('No hay ningun respaldo en GitHub aun. Sube uno primero desde el otro dispositivo.');
+    throw new Error('No se pudo acceder a GitHub. Verifica tu token.');
+  }
+  const data = await res.json();
+  const contenido = decodeURIComponent(escape(atob(data.content.replace(/\n/g,''))));
+  const datos = JSON.parse(contenido);
+  if (!datos.pacientes || !Array.isArray(datos.pacientes)) throw new Error('El archivo en GitHub no es un respaldo valido.');
+  const nombresActuales = db.pacientes.map(p => (p.nombre||'').toLowerCase().trim());
+  let agregados = 0;
+  datos.pacientes.forEach(p => {
+    if (!nombresActuales.includes((p.nombre||'').toLowerCase().trim())) { db.pacientes.push(p); agregados++; }
+  });
+  if (datos.psicologo && datos.psicologo.nombre && !db.psicologo.nombre) db.psicologo = datos.psicologo;
+  if (datos.notas && Array.isArray(datos.notas)) {
+    const tsActuales = new Set(db.notas.map(n => n.ts));
+    datos.notas.forEach(n => { if (!tsActuales.has(n.ts)) db.notas.push(n); });
+    db.notas.sort((a,b) => b.ts - a.ts);
+    db.notas = db.notas.slice(0, 200);
+  }
+  save(); renderInicio(); renderPsicologo();
+  alert('Sincronizacion completada.\n' + agregados + ' paciente(s) nuevos desde GitHub.\n' + (datos.pacientes.length - agregados) + ' ya existian localmente.');
+}
+
+function subirGitHub() { abrirModalGitHub('subir'); }
+function bajarGitHub() { abrirModalGitHub('bajar'); }
+document.addEventListener('DOMContentLoaded', function() {
+  const mo = document.getElementById('modal-github');
+  if (mo) mo.addEventListener('click', function(e) { if(e.target===this) cerrarModalGitHub(); });
+});
+
 </script>
+
+<!-- MODAL GITHUB -->
+<div class="modal-overlay" id="modal-github">
+  <div class="modal" style="max-height:75vh;">
+    <div class="modal-handle"></div>
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">
+      <div class="modal-title">Sincronizacion con GitHub</div>
+      <button class="btn btn-ghost btn-sm" onclick="cerrarModalGitHub()">X Cerrar</button>
+    </div>
+    <input type="hidden" id="gh-modo" value="subir">
+    <p id="gh-descripcion" style="font-size:13px;color:var(--text-muted);margin-bottom:14px;line-height:1.5;"></p>
+    <div style="background:var(--primary-light);border-left:3px solid var(--primary);border-radius:8px;padding:10px 12px;font-size:12px;color:var(--primary-dark);margin-bottom:12px;">
+      Necesitas un Token de acceso personal de GitHub con permiso <strong>repo</strong>. Se guarda en este dispositivo y no tienes que ingresarlo de nuevo.
+    </div>
+    <div class="form-group" style="margin-bottom:6px;">
+      <label>Token de acceso personal (GitHub)</label>
+      <input type="password" id="gh-token-input" placeholder="ghp_xxxxxxxxxxxxxxxxxxxx">
+    </div>
+    <p style="font-size:11px;color:var(--text-muted);margin-bottom:14px;line-height:1.6;">
+      Como generar tu token: GitHub > tu foto de perfil > Settings > Developer settings > Personal access tokens > Tokens (classic) > Generate new token > marca <strong>repo</strong> > Generate token > copia el token aqui.
+    </p>
+    <div style="display:flex;gap:8px;">
+      <button class="btn btn-primary" style="flex:1;" onclick="ejecutarSync()">Ejecutar</button>
+      <button class="btn btn-ghost btn-sm" onclick="cerrarModalGitHub()">Cancelar</button>
+    </div>
+  </div>
+</div>
+
 </body>
 </html>
