@@ -44,6 +44,14 @@
       "fechaCreacion": "2026-05-22T03:14:30.256Z"
     }
   ],
-  "psicologo": {},
+  "psicologo": {
+    "nombre": "Adán Hernández Hermández ",
+    "cedula": "10424750",
+    "especialidad": "Maestría en Psicología Clínica",
+    "tel": "7775646655",
+    "email": "hpsicoclinica@gmail.com",
+    "consultorio": "Tepalcingo, Mor. ",
+    "marca": "Hernández Psicología Clínica"
+  },
   "notas": []
 }
