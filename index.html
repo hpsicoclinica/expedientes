@@ -1,0 +1,905 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#0f4c75">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>Expediente Clínico Psicológico</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --primary: #1b6ca8; --primary-dark: #0f4c75; --primary-light: #e8f4fd;
+  --accent: #16a085; --accent-light: #e8f8f5;
+  --danger: #c0392b; --warning: #e67e22; --warning-light: #fef9f0;
+  --success: #27ae60; --success-light: #f0faf4;
+  --text: #1a1a2e; --text-muted: #5a6270; --text-light: #8e9aaa;
+  --bg: #f4f7fb; --surface: #ffffff; --border: #dde3ec;
+  --radius: 10px; --shadow: 0 2px 12px rgba(0,0,0,0.08);
+}
+body { font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; font-size: 14px; line-height: 1.5; }
+
+.topbar { background: linear-gradient(135deg, var(--primary-dark) 0%, var(--primary) 100%); color: white; padding: 0 14px; height: 56px; display: flex; align-items: center; justify-content: space-between; position: sticky; top: 0; z-index: 100; box-shadow: 0 2px 8px rgba(0,0,0,0.2); }
+.topbar-brand { display: flex; align-items: center; gap: 10px; }
+.topbar-brand .logo { width: 32px; height: 32px; background: rgba(255,255,255,0.2); border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 16px; }
+.topbar-brand .name { font-weight: 700; font-size: 15px; }
+.topbar-brand .subtitle { font-size: 11px; opacity: 0.75; margin-top: 1px; }
+.topbar-actions { display: flex; gap: 6px; }
+.btn-icon { background: rgba(255,255,255,0.15); border: 1px solid rgba(255,255,255,0.25); color: white; border-radius: 8px; padding: 5px 9px; cursor: pointer; font-size: 12px; display: flex; align-items: center; gap: 5px; transition: background 0.2s; white-space: nowrap; font-family: inherit; }
+.btn-icon:hover { background: rgba(255,255,255,0.28); }
+
+.bottom-nav { position: fixed; bottom: 0; left: 0; right: 0; background: var(--surface); border-top: 1px solid var(--border); display: flex; z-index: 99; box-shadow: 0 -4px 16px rgba(0,0,0,0.08); }
+.nav-item { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 8px 4px; cursor: pointer; color: var(--text-light); transition: color 0.2s; font-size: 10px; gap: 3px; border: none; background: none; }
+.nav-item.active { color: var(--primary); }
+.nav-item .nav-icon { font-size: 20px; }
+
+.main { padding: 16px; padding-bottom: 80px; max-width: 720px; margin: 0 auto; }
+.screen { display: none; } .screen.active { display: block; }
+
+.card { background: var(--surface); border-radius: var(--radius); border: 1px solid var(--border); padding: 16px; margin-bottom: 12px; box-shadow: var(--shadow); }
+.card-title { font-size: 14px; font-weight: 700; color: var(--primary-dark); display: flex; align-items: center; gap: 8px; margin-bottom: 14px; }
+.section-badge { display: inline-flex; align-items: center; gap: 6px; background: var(--primary-light); color: var(--primary-dark); border-radius: 20px; padding: 4px 12px; font-size: 11px; font-weight: 700; letter-spacing: 0.5px; text-transform: uppercase; margin-bottom: 14px; }
+
+.form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.form-grid.full { grid-template-columns: 1fr; }
+.form-group { display: flex; flex-direction: column; gap: 4px; }
+.form-group.span-2 { grid-column: span 2; }
+label { font-size: 11px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.4px; }
+input[type="text"], input[type="date"], input[type="tel"], input[type="email"], input[type="number"], select, textarea {
+  border: 1.5px solid var(--border); border-radius: 8px; padding: 8px 10px; font-size: 13px; color: var(--text); background: var(--surface); outline: none; font-family: inherit; transition: border-color 0.2s, box-shadow 0.2s; width: 100%;
+}
+input:focus, select:focus, textarea:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(27,108,168,0.1); }
+textarea { resize: vertical; min-height: 80px; }
+select { appearance: none; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%235a6270' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 10px center; padding-right: 30px; }
+
+.btn { border-radius: 8px; padding: 9px 16px; font-size: 13px; font-weight: 600; cursor: pointer; border: none; transition: all 0.2s; display: inline-flex; align-items: center; gap: 7px; font-family: inherit; }
+.btn-primary { background: var(--primary); color: white; } .btn-primary:hover { background: var(--primary-dark); }
+.btn-success { background: var(--success); color: white; } .btn-success:hover { background: #219653; }
+.btn-danger { background: var(--danger); color: white; }
+.btn-outline { background: transparent; color: var(--primary); border: 1.5px solid var(--primary); } .btn-outline:hover { background: var(--primary-light); }
+.btn-ghost { background: transparent; color: var(--text-muted); border: 1.5px solid var(--border); } .btn-ghost:hover { background: var(--bg); }
+.btn-pdf { background: #c0392b; color: white; } .btn-pdf:hover { background: #a93226; }
+.btn-sm { padding: 5px 10px; font-size: 11px; }
+.btn-full { width: 100%; justify-content: center; }
+
+.search-bar { position: relative; margin-bottom: 14px; }
+.search-bar input { padding-left: 36px; }
+.search-bar .search-icon { position: absolute; left: 11px; top: 50%; transform: translateY(-50%); color: var(--text-light); font-size: 16px; pointer-events: none; }
+
+.patient-item { background: var(--surface); border-radius: var(--radius); border: 1px solid var(--border); padding: 12px 14px; margin-bottom: 8px; display: flex; align-items: center; gap: 12px; cursor: pointer; transition: all 0.2s; }
+.patient-item:hover { border-color: var(--primary); box-shadow: 0 4px 12px rgba(27,108,168,0.1); transform: translateY(-1px); }
+.avatar { width: 44px; height: 44px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 15px; flex-shrink: 0; }
+.avatar-blue { background: var(--primary-light); color: var(--primary); }
+.avatar-green { background: var(--accent-light); color: var(--accent); }
+.avatar-orange { background: var(--warning-light); color: var(--warning); }
+.patient-info { flex: 1; min-width: 0; }
+.patient-name { font-weight: 700; font-size: 14px; }
+.patient-meta { font-size: 11px; color: var(--text-muted); margin-top: 2px; }
+.patient-badge { font-size: 10px; padding: 2px 8px; border-radius: 20px; font-weight: 600; }
+.badge-active { background: var(--success-light); color: var(--success); }
+.badge-inactive { background: var(--bg); color: var(--text-muted); }
+.empty-state { text-align: center; padding: 40px 20px; color: var(--text-muted); }
+.empty-state .empty-icon { font-size: 48px; margin-bottom: 12px; opacity: 0.4; }
+
+.tabs { display: flex; background: var(--bg); border-radius: 10px; padding: 3px; margin-bottom: 14px; gap: 2px; overflow-x: auto; }
+.tab { flex: 1; min-width: 60px; padding: 7px 6px; border-radius: 7px; border: none; background: none; font-size: 11px; font-weight: 600; color: var(--text-muted); cursor: pointer; transition: all 0.2s; white-space: nowrap; font-family: inherit; }
+.tab.active { background: var(--surface); color: var(--primary); box-shadow: 0 1px 4px rgba(0,0,0,0.1); }
+.tab-content { display: none; } .tab-content.active { display: block; }
+
+.modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 200; display: flex; align-items: flex-end; justify-content: center; opacity: 0; pointer-events: none; transition: opacity 0.3s; }
+.modal-overlay.open { opacity: 1; pointer-events: all; }
+.modal { background: var(--surface); border-radius: 20px 20px 0 0; padding: 20px; width: 100%; max-width: 720px; max-height: 92vh; overflow-y: auto; transform: translateY(100%); transition: transform 0.3s cubic-bezier(0.4,0,0.2,1); }
+.modal-overlay.open .modal { transform: translateY(0); }
+.modal-handle { width: 36px; height: 4px; background: var(--border); border-radius: 2px; margin: 0 auto 16px; }
+.modal-title { font-size: 16px; font-weight: 700; color: var(--primary-dark); }
+
+.dx-item { background: var(--bg); border-radius: 8px; padding: 10px 12px; margin-bottom: 6px; display: flex; align-items: center; justify-content: space-between; }
+.dx-code { font-family: monospace; font-size: 12px; font-weight: 700; color: var(--primary); white-space: nowrap; }
+.dx-desc { font-size: 12px; color: var(--text); flex: 1; margin: 0 10px; }
+.dx-system { font-size: 10px; padding: 2px 7px; border-radius: 10px; font-weight: 700; white-space: nowrap; }
+.dx-dsm { background: #e8f4fd; color: #1b6ca8; } .dx-cie { background: var(--accent-light); color: var(--accent); }
+
+.nota-item { border-left: 3px solid var(--primary); padding: 10px 12px; background: var(--bg); border-radius: 0 8px 8px 0; margin-bottom: 8px; }
+.nota-date { font-size: 10px; color: var(--text-light); margin-bottom: 4px; font-weight: 600; text-transform: uppercase; }
+.nota-text { font-size: 13px; color: var(--text); line-height: 1.6; }
+
+.stats-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 14px; }
+.stat-card { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 12px 10px; text-align: center; }
+.stat-number { font-size: 24px; font-weight: 800; color: var(--primary-dark); }
+.stat-label { font-size: 10px; color: var(--text-muted); font-weight: 600; text-transform: uppercase; letter-spacing: 0.3px; margin-top: 2px; }
+
+.psi-card { background: linear-gradient(135deg, var(--primary-dark), var(--primary)); border-radius: 14px; padding: 20px; color: white; margin-bottom: 12px; position: relative; overflow: hidden; }
+.psi-card::before { content: ''; position: absolute; top: -20px; right: -20px; width: 100px; height: 100px; background: rgba(255,255,255,0.07); border-radius: 50%; }
+.psi-avatar { width: 56px; height: 56px; background: rgba(255,255,255,0.2); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 22px; font-weight: 800; margin-bottom: 12px; }
+.psi-name { font-size: 18px; font-weight: 800; }
+.psi-cedula { font-size: 12px; opacity: 0.8; margin-top: 2px; }
+.psi-detail { display: flex; align-items: center; gap: 8px; margin-top: 10px; font-size: 12px; opacity: 0.85; }
+
+.divider { height: 1px; background: var(--border); margin: 14px 0; }
+.alert { border-radius: 8px; padding: 10px 12px; font-size: 12px; display: flex; gap: 8px; margin-bottom: 10px; }
+.alert-info { background: var(--primary-light); color: var(--primary-dark); border-left: 3px solid var(--primary); }
+.alert-warning { background: var(--warning-light); color: var(--warning); border-left: 3px solid var(--warning); }
+
+.fab { position: fixed; bottom: 76px; right: 20px; width: 52px; height: 52px; background: var(--primary); color: white; border-radius: 50%; border: none; font-size: 26px; cursor: pointer; box-shadow: 0 4px 16px rgba(27,108,168,0.4); display: flex; align-items: center; justify-content: center; z-index: 90; transition: all 0.2s; }
+.fab:hover { background: var(--primary-dark); transform: scale(1.05); }
+.fab.hidden { display: none; }
+
+@media (max-width: 400px) {
+  .form-grid { grid-template-columns: 1fr; }
+  .form-group.span-2 { grid-column: span 1; }
+  .stats-grid { grid-template-columns: 1fr 1fr; }
+  .topbar-brand .name { font-size: 13px; }
+}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="topbar-brand">
+    <div class="logo">🧠</div>
+    <div>
+      <div class="name">Expediente Psicológico</div>
+      <div class="subtitle" id="topbar-subtitle">Hernández Psicología Clínica</div>
+    </div>
+  </div>
+  <div class="topbar-actions">
+    <button class="btn-icon" onclick="exportarDatos()">💾 Respaldo</button>
+    <button class="btn-icon" onclick="document.getElementById('importar-input').click()">📂 Fusionar</button>
+    <button class="btn-icon" onclick="document.getElementById('reemplazar-input').click()" style="background:rgba(192,57,43,0.5);">🔄 Reemplazar</button>
+    <input type="file" id="importar-input" accept=".json" style="display:none" onchange="importarDatos(event)">
+    <input type="file" id="reemplazar-input" accept=".json" style="display:none" onchange="reemplazarDatos(event)">
+  </div>
+</div>
+
+<div class="main">
+
+  <!-- INICIO -->
+  <div class="screen active" id="screen-inicio">
+    <div class="stats-grid">
+      <div class="stat-card"><div class="stat-number" id="stat-total">0</div><div class="stat-label">Pacientes</div></div>
+      <div class="stat-card"><div class="stat-number" id="stat-activos">0</div><div class="stat-label">Activos</div></div>
+      <div class="stat-card"><div class="stat-number" id="stat-dx">0</div><div class="stat-label">Diagnósticos</div></div>
+    </div>
+    <div class="card">
+      <div class="card-title">📋 Acciones rápidas</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+        <button class="btn btn-primary" onclick="navTo('pacientes');abrirModalPaciente()">➕ Nuevo paciente</button>
+        <button class="btn btn-outline" onclick="navTo('pacientes')">🔍 Ver pacientes</button>
+        <button class="btn btn-ghost" onclick="navTo('psicologo')">👨‍⚕️ Mi perfil</button>
+        <button class="btn btn-ghost" onclick="navTo('agenda')">📅 Notas del día</button>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-title">🕐 Últimos pacientes</div>
+      <div id="ultimos-pacientes"><div class="empty-state"><div class="empty-icon">👤</div><p>Sin pacientes aún</p></div></div>
+    </div>
+  </div>
+
+  <!-- PACIENTES -->
+  <div class="screen" id="screen-pacientes">
+    <div class="search-bar">
+      <span class="search-icon">🔍</span>
+      <input type="text" id="buscador" placeholder="Buscar por nombre, diagnóstico..." oninput="filtrarPacientes()">
+    </div>
+    <div id="lista-pacientes"><div class="empty-state"><div class="empty-icon">👤</div><p>Sin pacientes. Toca ➕ para agregar.</p></div></div>
+  </div>
+
+  <!-- AGENDA -->
+  <div class="screen" id="screen-agenda">
+    <div class="section-badge">📝 Notas del día</div>
+    <div class="card">
+      <div class="form-group" style="margin-bottom:10px;">
+        <label>Nota rápida</label>
+        <textarea id="nota-rapida" placeholder="Escribe una nota clínica o recordatorio..." rows="3"></textarea>
+      </div>
+      <div style="display:flex;gap:8px;">
+        <select id="nota-paciente-sel" style="flex:1;"><option value="">— Paciente (opcional) —</option></select>
+        <button class="btn btn-primary" onclick="guardarNotaRapida()">Guardar</button>
+      </div>
+    </div>
+    <div id="notas-lista"></div>
+  </div>
+
+  <!-- PSICÓLOGO -->
+  <div class="screen" id="screen-psicologo">
+    <div id="psi-display"></div>
+    <div class="card">
+      <div class="card-title">✏️ Datos del psicólogo tratante</div>
+      <div class="form-grid">
+        <div class="form-group span-2"><label>Nombre completo</label><input type="text" id="psi-nombre" placeholder="Lic./Dr. Nombre Apellidos"></div>
+        <div class="form-group"><label>Cédula profesional</label><input type="text" id="psi-cedula" placeholder="1234567"></div>
+        <div class="form-group"><label>Especialidad</label><input type="text" id="psi-especialidad" placeholder="Psicología Clínica"></div>
+        <div class="form-group"><label>Teléfono / WhatsApp</label><input type="tel" id="psi-tel" placeholder="55 1234 5678"></div>
+        <div class="form-group"><label>Email</label><input type="email" id="psi-email" placeholder="correo@ejemplo.com"></div>
+        <div class="form-group span-2"><label>Consultorio / Dirección</label><input type="text" id="psi-consultorio" placeholder="Calle, colonia, ciudad..."></div>
+        <div class="form-group span-2"><label>Nombre del consultorio / Marca</label><input type="text" id="psi-marca" placeholder="Hernández Psicología Clínica"></div>
+      </div>
+      <button class="btn btn-primary btn-full" style="margin-top:12px;" onclick="guardarPsicologo()">💾 Guardar datos</button>
+    </div>
+  </div>
+
+</div>
+
+<button class="fab hidden" id="fab-btn" onclick="abrirModalPaciente()">➕</button>
+
+<nav class="bottom-nav">
+  <button class="nav-item active" id="nav-inicio" onclick="navTo('inicio')"><span class="nav-icon">🏠</span><span>Inicio</span></button>
+  <button class="nav-item" id="nav-pacientes" onclick="navTo('pacientes')"><span class="nav-icon">👥</span><span>Pacientes</span></button>
+  <button class="nav-item" id="nav-agenda" onclick="navTo('agenda')"><span class="nav-icon">📝</span><span>Notas</span></button>
+  <button class="nav-item" id="nav-psicologo" onclick="navTo('psicologo')"><span class="nav-icon">👨‍⚕️</span><span>Mi perfil</span></button>
+</nav>
+
+<!-- MODAL PACIENTE -->
+<div class="modal-overlay" id="modal-paciente">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+      <div class="modal-title" id="modal-title">Nuevo Paciente</div>
+      <div style="display:flex;gap:6px;">
+        <button class="btn btn-pdf btn-sm" id="btn-pdf" onclick="exportarPDF()" style="display:none;">📄 Exportar PDF</button>
+        <button class="btn btn-ghost btn-sm" onclick="cerrarModal()">✕ Cerrar</button>
+      </div>
+    </div>
+
+    <div class="tabs">
+      <button class="tab active" onclick="cambiarTab(0)">👤 Datos</button>
+      <button class="tab" onclick="cambiarTab(1)">📋 Antecedentes</button>
+      <button class="tab" onclick="cambiarTab(2)">🔬 Diagnóstico</button>
+      <button class="tab" onclick="cambiarTab(3)">📝 Expediente</button>
+    </div>
+
+    <!-- TAB 0: DATOS PERSONALES -->
+    <div class="tab-content active" id="tc-0">
+      <div class="section-badge">📍 Datos personales</div>
+      <div class="form-grid">
+        <div class="form-group span-2"><label>Nombre completo *</label><input type="text" id="p-nombre" placeholder="Apellido Apellido, Nombre(s)"></div>
+        <div class="form-group"><label>Fecha de nacimiento</label><input type="date" id="p-nacimiento"></div>
+        <div class="form-group"><label>Edad</label><input type="number" id="p-edad" placeholder="25" min="0" max="120"></div>
+        <div class="form-group"><label>Sexo</label>
+          <select id="p-sexo"><option value="">Seleccionar</option><option>Masculino</option><option>Femenino</option><option>No binario</option><option>Prefiere no especificar</option></select>
+        </div>
+        <div class="form-group"><label>Estado civil</label>
+          <select id="p-ecivil"><option value="">Seleccionar</option><option>Soltero/a</option><option>Casado/a</option><option>Unión libre</option><option>Divorciado/a</option><option>Viudo/a</option></select>
+        </div>
+        <div class="form-group"><label>Escolaridad</label>
+          <select id="p-escolaridad"><option value="">Seleccionar</option><option>Sin escolaridad</option><option>Primaria</option><option>Secundaria</option><option>Preparatoria</option><option>Técnico</option><option>Licenciatura</option><option>Posgrado</option></select>
+        </div>
+        <div class="form-group"><label>Ocupación</label><input type="text" id="p-ocupacion" placeholder="Ej. Docente, Estudiante..."></div>
+      </div>
+      <div class="divider"></div>
+      <div class="section-badge">📞 Contacto</div>
+      <div class="form-grid">
+        <div class="form-group"><label>Teléfono principal</label><input type="tel" id="p-tel" placeholder="55 1234 5678"></div>
+        <div class="form-group"><label>Teléfono alterno</label><input type="tel" id="p-tel2" placeholder="55 8765 4321"></div>
+        <div class="form-group span-2"><label>Correo electrónico</label><input type="email" id="p-email" placeholder="paciente@email.com"></div>
+        <div class="form-group span-2"><label>Dirección</label><input type="text" id="p-direccion" placeholder="Calle, colonia, ciudad..."></div>
+        <div class="form-group span-2"><label>Contacto de emergencia</label><input type="text" id="p-emergency" placeholder="Nombre — Parentesco — Teléfono"></div>
+      </div>
+      <div class="divider"></div>
+      <div class="section-badge">📅 Consulta</div>
+      <div class="form-grid">
+        <div class="form-group"><label>Primera consulta</label><input type="date" id="p-primera-consulta"></div>
+        <div class="form-group"><label>Estatus</label>
+          <select id="p-estatus"><option value="Activo">Activo</option><option value="En espera">En espera</option><option value="Alta">Alta</option><option value="Inactivo">Inactivo</option><option value="Referido">Referido</option></select>
+        </div>
+        <div class="form-group span-2"><label>Motivo de consulta</label><textarea id="p-motivo" rows="2" placeholder="¿Por qué busca atención psicológica?"></textarea></div>
+      </div>
+    </div>
+
+    <!-- TAB 1: ANTECEDENTES -->
+    <div class="tab-content" id="tc-1">
+      <div class="section-badge">🏥 Antecedentes médicos</div>
+      <div class="form-grid full">
+        <div class="form-group"><label>Enfermedades / padecimientos actuales</label><textarea id="a-enfermedades" rows="2" placeholder="Hipertensión, diabetes, hipotiroidismo..."></textarea></div>
+        <div class="form-group"><label>Medicamentos actuales</label><textarea id="a-medicamentos" rows="2" placeholder="Nombre, dosis, frecuencia..."></textarea></div>
+        <div class="form-group"><label>Cirugías / hospitalizaciones previas</label><textarea id="a-cirugias" rows="2" placeholder="Descripción y año aproximado..."></textarea></div>
+        <div class="form-group"><label>Alergias</label><input type="text" id="a-alergias" placeholder="Penicilina, polvo, látex..."></div>
+      </div>
+      <div class="divider"></div>
+      <div class="section-badge">🧠 Antecedentes psicológicos / psiquiátricos</div>
+      <div class="form-grid full">
+        <div class="form-group"><label>Tratamientos psicológicos previos</label><textarea id="a-tx-previos" rows="2" placeholder="Tipo de terapia, duración, término..."></textarea></div>
+        <div class="form-group"><label>Tratamiento psiquiátrico</label><textarea id="a-psiquiatria" rows="2" placeholder="Diagnóstico, medicación, tratante..."></textarea></div>
+        <div class="form-group"><label>Riesgo suicida / autolesiones</label>
+          <select id="a-suicidio"><option>No reporta</option><option>Ideación pasiva</option><option>Ideación activa sin plan</option><option>Plan suicida activo</option><option>Intentos previos</option><option>Autolesiones sin intención suicida</option></select>
+        </div>
+        <div class="form-group"><label>Consumo de sustancias</label><textarea id="a-sustancias" rows="2" placeholder="Tipo, frecuencia, cantidad, tiempo de uso..."></textarea></div>
+      </div>
+      <div class="divider"></div>
+      <div class="section-badge">👨‍👩‍👧 Antecedentes familiares</div>
+      <div class="form-grid full">
+        <div class="form-group"><label>Psicopatología familiar</label><textarea id="a-familia-psi" rows="2" placeholder="Depresión, ansiedad, esquizofrenia en familia..."></textarea></div>
+        <div class="form-group"><label>Dinámica familiar</label><textarea id="a-familia-dinamica" rows="2" placeholder="Estructura familiar, convivencia, conflictos..."></textarea></div>
+        <div class="form-group"><label>Antecedentes de violencia / abuso</label>
+          <select id="a-violencia"><option>No reporta</option><option>Violencia física</option><option>Violencia psicológica</option><option>Violencia sexual</option><option>Negligencia</option><option>Múltiples tipos</option></select>
+        </div>
+        <div class="form-group"><label>Eventos vitales significativos</label><textarea id="a-eventos" rows="2" placeholder="Pérdidas, separaciones, traumas..."></textarea></div>
+      </div>
+    </div>
+
+    <!-- TAB 2: DIAGNÓSTICO -->
+    <div class="tab-content" id="tc-2">
+      <div class="section-badge">🔬 Diagnóstico clínico</div>
+      <div class="alert alert-info">ℹ️ Agrega los diagnósticos DSM-5 y/o CIE-11 aplicables. Puedes agregar múltiples.</div>
+      <div class="card" style="background:var(--bg);box-shadow:none;">
+        <div class="form-grid">
+          <div class="form-group"><label>Sistema diagnóstico</label>
+            <select id="dx-sistema"><option>DSM-5</option><option>CIE-11</option><option>DSM-5-TR</option></select>
+          </div>
+          <div class="form-group"><label>Código</label><input type="text" id="dx-codigo" placeholder="F32.1 / 296.21"></div>
+          <div class="form-group span-2"><label>Nombre del diagnóstico</label><input type="text" id="dx-nombre" placeholder="Ej. Trastorno depresivo mayor, episodio único, moderado"></div>
+          <div class="form-group span-2"><label>Especificadores / notas</label><input type="text" id="dx-notas" placeholder="Con características ansiosas, en remisión parcial..."></div>
+        </div>
+        <button class="btn btn-success btn-full" style="margin-top:8px;" onclick="agregarDiagnostico()">➕ Agregar diagnóstico</button>
+      </div>
+      <div id="dx-lista" style="margin-top:10px;"></div>
+      <div class="divider"></div>
+      <div class="section-badge">📊 Evaluación complementaria</div>
+      <div class="form-grid full">
+        <div class="form-group"><label>Instrumentos de evaluación aplicados</label><textarea id="dx-instrumentos" rows="2" placeholder="BDI-II, BAI, SCL-90, MMPI-2..."></textarea></div>
+        <div class="form-group"><label>Diagnóstico diferencial</label><textarea id="dx-diferencial" rows="2" placeholder="Descartar trastorno bipolar, TDAH, PTSD..."></textarea></div>
+        <div class="form-group"><label>Nivel de funcionamiento (GAF / WHODAS)</label><input type="text" id="dx-gaf" placeholder="GAF: 55 — Funcionamiento moderado"></div>
+        <div class="form-group"><label>Pronóstico</label>
+          <select id="dx-pronostico"><option value="">Seleccionar</option><option>Favorable</option><option>Reservado</option><option>Bueno con tratamiento</option><option>Crónico</option><option>En evaluación</option></select>
+        </div>
+      </div>
+    </div>
+
+    <!-- TAB 3: EXPEDIENTE -->
+    <div class="tab-content" id="tc-3">
+      <div class="section-badge">📝 Plan terapéutico</div>
+      <div class="form-grid full">
+        <div class="form-group"><label>Enfoque terapéutico</label>
+          <select id="exp-enfoque"><option value="">Seleccionar</option><option>Cognitivo-conductual (TCC)</option><option>Psicoanalítico / Psicodinámico</option><option>Humanista / Centrado en la persona</option><option>Terapia de aceptación y compromiso (ACT)</option><option>EMDR</option><option>Sistémico / Familiar</option><option>Gestalt</option><option>Integrativo</option><option>Otro</option></select>
+        </div>
+        <div class="form-group"><label>Frecuencia de sesiones</label>
+          <select id="exp-frecuencia"><option value="">Seleccionar</option><option>Semanal</option><option>Quincenal</option><option>Mensual</option><option>Intensivo (2x semana)</option></select>
+        </div>
+        <div class="form-group"><label>Objetivos terapéuticos</label><textarea id="exp-objetivos" rows="3" placeholder="1. Reducir sintomatología depresiva&#10;2. Mejorar regulación emocional..."></textarea></div>
+        <div class="form-group"><label>Intervenciones planeadas</label><textarea id="exp-intervenciones" rows="2" placeholder="Reestructuración cognitiva, activación conductual..."></textarea></div>
+      </div>
+      <div class="divider"></div>
+      <div class="section-badge">📖 Notas de sesión</div>
+      <div class="form-grid full">
+        <div class="form-group"><label>Nueva nota de sesión</label><textarea id="exp-nota-nueva" rows="3" placeholder="Contenido de la sesión, observaciones clínicas..."></textarea></div>
+        <div class="form-group"><label>Sesión / fecha</label><input type="text" id="exp-nota-fecha" placeholder="Sesión 4 — 21 mayo 2026"></div>
+      </div>
+      <button class="btn btn-full" onclick="agregarNota()" style="background:var(--accent);color:white;margin-bottom:12px;">➕ Agregar nota de sesión</button>
+      <div id="notas-sesion-lista"></div>
+      <div class="divider"></div>
+      <div class="section-badge">⚠️ Seguridad y observaciones</div>
+      <div class="form-grid full">
+        <div class="form-group"><label>Plan de seguridad</label><textarea id="exp-seguridad" rows="2" placeholder="Personas de apoyo, recursos de crisis..."></textarea></div>
+        <div class="form-group"><label>Observaciones adicionales</label><textarea id="exp-observaciones" rows="2" placeholder="Aspectos relevantes adicionales..."></textarea></div>
+      </div>
+    </div>
+
+    <div class="divider"></div>
+    <div style="display:flex;gap:8px;">
+      <button class="btn btn-primary" style="flex:1;" onclick="guardarPaciente()">💾 Guardar expediente</button>
+      <button class="btn btn-danger btn-sm" id="btn-eliminar" onclick="eliminarPaciente()" style="display:none;">🗑️ Eliminar</button>
+    </div>
+  </div>
+</div>
+
+<script>
+let db = JSON.parse(localStorage.getItem('expClinico') || '{"pacientes":[],"psicologo":{},"notas":[]}');
+let dxTemp = [], notasTemp = [], editIndex = -1;
+function save() { localStorage.setItem('expClinico', JSON.stringify(db)); }
+
+function navTo(s) {
+  document.querySelectorAll('.screen').forEach(x => x.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(x => x.classList.remove('active'));
+  document.getElementById('screen-'+s).classList.add('active');
+  document.getElementById('nav-'+s).classList.add('active');
+  document.getElementById('fab-btn').classList.toggle('hidden', s !== 'pacientes');
+  if(s==='inicio') renderInicio();
+  if(s==='pacientes') renderPacientes();
+  if(s==='psicologo') renderPsicologo();
+  if(s==='agenda') renderAgenda();
+}
+
+function cambiarTab(i) {
+  document.querySelectorAll('.tab').forEach((t,idx) => t.classList.toggle('active', idx===i));
+  document.querySelectorAll('.tab-content').forEach((t,idx) => t.classList.toggle('active', idx===i));
+}
+
+function abrirModalPaciente(idx) {
+  editIndex = (idx !== undefined) ? idx : -1;
+  dxTemp = []; notasTemp = [];
+  limpiarForm();
+  document.getElementById('btn-eliminar').style.display = editIndex >= 0 ? 'inline-flex' : 'none';
+  document.getElementById('btn-pdf').style.display = editIndex >= 0 ? 'inline-flex' : 'none';
+  document.getElementById('modal-title').textContent = editIndex >= 0 ? 'Editar Expediente' : 'Nuevo Paciente';
+  if (editIndex >= 0) {
+    const p = db.pacientes[editIndex];
+    cargarForm(p);
+    dxTemp = p.diagnosticos ? [...p.diagnosticos] : [];
+    notasTemp = p.notas ? [...p.notas] : [];
+    renderDxLista(); renderNotasSesion();
+  }
+  cambiarTab(0);
+  document.getElementById('modal-paciente').classList.add('open');
+}
+function cerrarModal() { document.getElementById('modal-paciente').classList.remove('open'); }
+
+const CAMPOS_MAP = {
+  'p-nombre':'nombre','p-nacimiento':'nacimiento','p-edad':'edad','p-sexo':'sexo','p-ecivil':'ecivil',
+  'p-escolaridad':'escolaridad','p-ocupacion':'ocupacion','p-tel':'tel','p-tel2':'tel2','p-email':'email',
+  'p-direccion':'direccion','p-emergency':'emergency','p-primera-consulta':'primeraConsulta',
+  'p-estatus':'estatus','p-motivo':'motivo','a-enfermedades':'aEnfermedades','a-medicamentos':'aMedicamentos',
+  'a-cirugias':'aCirugias','a-alergias':'aAlergias','a-tx-previos':'aTxPrevios','a-psiquiatria':'aPsiquiatria',
+  'a-suicidio':'aSuicidio','a-sustancias':'aSustancias','a-familia-psi':'aFamiliaPsi',
+  'a-familia-dinamica':'aFamiliaDinamica','a-violencia':'aViolencia','a-eventos':'aEventos',
+  'dx-instrumentos':'dxInstrumentos','dx-diferencial':'dxDiferencial','dx-gaf':'dxGaf','dx-pronostico':'dxPronostico',
+  'exp-enfoque':'expEnfoque','exp-frecuencia':'expFrecuencia','exp-objetivos':'expObjetivos',
+  'exp-intervenciones':'expIntervenciones','exp-seguridad':'expSeguridad','exp-observaciones':'expObservaciones'
+};
+
+function limpiarForm() {
+  Object.keys(CAMPOS_MAP).forEach(id => { const el = document.getElementById(id); if(el) el.value = ''; });
+  document.getElementById('p-estatus').value = 'Activo';
+  document.getElementById('a-suicidio').value = 'No reporta';
+  document.getElementById('a-violencia').value = 'No reporta';
+  document.getElementById('dx-lista').innerHTML = '';
+  document.getElementById('notas-sesion-lista').innerHTML = '';
+}
+
+function cargarForm(p) {
+  Object.entries(CAMPOS_MAP).forEach(([id, key]) => {
+    const el = document.getElementById(id);
+    if(el && p[key]) el.value = p[key];
+  });
+}
+
+function leerForm() {
+  const obj = {};
+  Object.entries(CAMPOS_MAP).forEach(([id, key]) => { obj[key] = document.getElementById(id)?.value || ''; });
+  obj.diagnosticos = dxTemp;
+  obj.notas = notasTemp;
+  obj.fechaModificacion = new Date().toISOString();
+  return obj;
+}
+
+function guardarPaciente() {
+  const p = leerForm();
+  if (!p.nombre.trim()) { alert('El nombre del paciente es obligatorio.'); cambiarTab(0); return; }
+  if (editIndex >= 0) { db.pacientes[editIndex] = p; }
+  else { p.fechaCreacion = new Date().toISOString(); db.pacientes.unshift(p); }
+  save(); cerrarModal(); renderPacientes(); renderInicio();
+  alert('✅ Expediente guardado correctamente.');
+}
+
+function eliminarPaciente() {
+  if (!confirm('¿Eliminar este expediente? Esta acción no se puede deshacer.')) return;
+  db.pacientes.splice(editIndex, 1); save(); cerrarModal(); renderPacientes(); renderInicio();
+}
+
+function agregarDiagnostico() {
+  const nombre = document.getElementById('dx-nombre').value.trim();
+  if (!nombre) { alert('Escribe el nombre del diagnóstico.'); return; }
+  dxTemp.push({
+    sistema: document.getElementById('dx-sistema').value,
+    codigo: document.getElementById('dx-codigo').value.trim(),
+    nombre, notas: document.getElementById('dx-notas').value.trim()
+  });
+  ['dx-codigo','dx-nombre','dx-notas'].forEach(id => document.getElementById(id).value = '');
+  renderDxLista();
+}
+
+function renderDxLista() {
+  const el = document.getElementById('dx-lista');
+  if (!dxTemp.length) { el.innerHTML = '<p style="font-size:12px;color:var(--text-muted);text-align:center;padding:12px;">Sin diagnósticos agregados aún.</p>'; return; }
+  el.innerHTML = dxTemp.map((dx, i) => `
+    <div class="dx-item">
+      <span class="dx-code">${dx.codigo||'—'}</span>
+      <div class="dx-desc"><strong>${dx.nombre}</strong>${dx.notas?'<br><span style="font-size:11px;color:var(--text-muted);">'+dx.notas+'</span>':''}</div>
+      <span class="dx-system ${dx.sistema.includes('DSM')?'dx-dsm':'dx-cie'}">${dx.sistema}</span>
+      <button onclick="quitarDx(${i})" style="background:none;border:none;cursor:pointer;color:var(--danger);margin-left:6px;font-size:16px;">✕</button>
+    </div>`).join('');
+}
+function quitarDx(i) { dxTemp.splice(i,1); renderDxLista(); }
+
+function agregarNota() {
+  const texto = document.getElementById('exp-nota-nueva').value.trim();
+  if (!texto) { alert('Escribe el contenido de la nota.'); return; }
+  notasTemp.unshift({ texto, fecha: document.getElementById('exp-nota-fecha').value.trim() || new Date().toLocaleDateString('es-MX'), ts: Date.now() });
+  document.getElementById('exp-nota-nueva').value = '';
+  document.getElementById('exp-nota-fecha').value = '';
+  renderNotasSesion();
+}
+
+function renderNotasSesion() {
+  const el = document.getElementById('notas-sesion-lista');
+  if (!notasTemp.length) { el.innerHTML = ''; return; }
+  el.innerHTML = notasTemp.map((n,i) => `
+    <div class="nota-item">
+      <div class="nota-date">${n.fecha}
+        <button onclick="quitarNota(${i})" style="background:none;border:none;cursor:pointer;color:var(--danger);font-size:11px;float:right;">✕ Eliminar</button>
+      </div>
+      <div class="nota-text">${n.texto}</div>
+    </div>`).join('');
+}
+function quitarNota(i) { notasTemp.splice(i,1); renderNotasSesion(); }
+
+function renderInicio() {
+  document.getElementById('stat-total').textContent = db.pacientes.length;
+  document.getElementById('stat-activos').textContent = db.pacientes.filter(p=>p.estatus==='Activo').length;
+  document.getElementById('stat-dx').textContent = db.pacientes.reduce((a,p)=>a+(p.diagnosticos?.length||0),0);
+  const el = document.getElementById('ultimos-pacientes');
+  const recientes = db.pacientes.slice(0,5);
+  if (!recientes.length) { el.innerHTML = '<div class="empty-state"><div class="empty-icon">👤</div><p>Sin pacientes aún</p></div>'; return; }
+  const cols = ['avatar-blue','avatar-green','avatar-orange'];
+  el.innerHTML = recientes.map((p,i) => {
+    const ini = p.nombre ? p.nombre.split(' ').map(w=>w[0]).slice(0,2).join('').toUpperCase() : '??';
+    const dx = p.diagnosticos?.length ? p.diagnosticos[0].nombre : 'Sin diagnóstico';
+    const bc = p.estatus==='Activo'?'badge-active':'badge-inactive';
+    return `<div class="patient-item" onclick="navTo('pacientes');setTimeout(()=>abrirModalPaciente(${db.pacientes.indexOf(p)}),50)">
+      <div class="avatar ${cols[i%3]}">${ini}</div>
+      <div class="patient-info"><div class="patient-name">${p.nombre}</div><div class="patient-meta">${dx}</div></div>
+      <span class="patient-badge ${bc}">${p.estatus}</span>
+    </div>`;
+  }).join('');
+}
+
+function renderPacientes(lista) {
+  const pacs = lista || db.pacientes;
+  const el = document.getElementById('lista-pacientes');
+  if (!pacs.length) { el.innerHTML = '<div class="empty-state"><div class="empty-icon">👤</div><p>Sin pacientes. Toca ➕ para agregar.</p></div>'; return; }
+  const cols = ['avatar-blue','avatar-green','avatar-orange'];
+  el.innerHTML = pacs.map(p => {
+    const idx = db.pacientes.indexOf(p);
+    const ini = p.nombre ? p.nombre.split(' ').map(w=>w[0]).slice(0,2).join('').toUpperCase() : '??';
+    const dx = p.diagnosticos?.length ? `${p.diagnosticos.length} diagnóstico(s)` : 'Sin diagnóstico';
+    const bc = p.estatus==='Activo'?'badge-active':'badge-inactive';
+    return `<div class="patient-item" onclick="abrirModalPaciente(${idx})">
+      <div class="avatar ${cols[idx%3]}">${ini}</div>
+      <div class="patient-info">
+        <div class="patient-name">${p.nombre}</div>
+        <div class="patient-meta">${p.edad?p.edad+' años · ':''}${p.tel||'Sin teléfono'} · ${dx}</div>
+      </div>
+      <span class="patient-badge ${bc}">${p.estatus}</span>
+    </div>`;
+  }).join('');
+}
+
+function filtrarPacientes() {
+  const q = document.getElementById('buscador').value.toLowerCase();
+  if (!q) { renderPacientes(); return; }
+  renderPacientes(db.pacientes.filter(p =>
+    p.nombre?.toLowerCase().includes(q) ||
+    p.diagnosticos?.some(d=>d.nombre.toLowerCase().includes(q)) ||
+    p.motivo?.toLowerCase().includes(q)
+  ));
+}
+
+function guardarPsicologo() {
+  db.psicologo = {
+    nombre: document.getElementById('psi-nombre').value,
+    cedula: document.getElementById('psi-cedula').value,
+    especialidad: document.getElementById('psi-especialidad').value,
+    tel: document.getElementById('psi-tel').value,
+    email: document.getElementById('psi-email').value,
+    consultorio: document.getElementById('psi-consultorio').value,
+    marca: document.getElementById('psi-marca').value
+  };
+  save(); renderPsicologo(); alert('✅ Datos del psicólogo guardados.');
+}
+
+function renderPsicologo() {
+  const p = db.psicologo;
+  const ini = p.nombre ? p.nombre.split(' ').map(w=>w[0]).slice(0,2).join('').toUpperCase() : 'DR';
+  document.getElementById('psi-display').innerHTML = p.nombre ? `
+    <div class="psi-card">
+      <div class="psi-avatar">${ini}</div>
+      <div class="psi-name">${p.nombre}</div>
+      <div class="psi-cedula">Cédula profesional: ${p.cedula||'No registrada'}</div>
+      ${p.especialidad?`<div class="psi-detail">🎓 ${p.especialidad}</div>`:''}
+      ${p.tel?`<div class="psi-detail">📞 ${p.tel}</div>`:''}
+      ${p.consultorio?`<div class="psi-detail">📍 ${p.consultorio}</div>`:''}
+    </div>` : '<div class="alert alert-warning">⚠️ Completa tus datos como psicólogo.</div>';
+  ['nombre','cedula','especialidad','tel','email','consultorio','marca'].forEach(k => {
+    if(p[k]) document.getElementById('psi-'+k).value = p[k];
+  });
+  document.getElementById('topbar-subtitle').textContent = p.marca || p.nombre || 'Hernández Psicología Clínica';
+}
+
+function guardarNotaRapida() {
+  const texto = document.getElementById('nota-rapida').value.trim();
+  if (!texto) return;
+  db.notas.unshift({ texto, paciente: document.getElementById('nota-paciente-sel').value,
+    fecha: new Date().toLocaleDateString('es-MX',{day:'2-digit',month:'short',year:'numeric'}), ts: Date.now() });
+  save(); document.getElementById('nota-rapida').value = ''; renderAgenda();
+}
+
+function renderAgenda() {
+  document.getElementById('nota-paciente-sel').innerHTML = '<option value="">— Paciente (opcional) —</option>' +
+    db.pacientes.map(p=>`<option>${p.nombre}</option>`).join('');
+  const el = document.getElementById('notas-lista');
+  if (!db.notas.length) { el.innerHTML = '<div class="empty-state"><div class="empty-icon">📝</div><p>Sin notas aún.</p></div>'; return; }
+  el.innerHTML = db.notas.slice(0,20).map((n,i)=>`
+    <div class="nota-item">
+      <div class="nota-date">${n.fecha}${n.paciente?' · '+n.paciente:''}
+        <button onclick="db.notas.splice(${i},1);save();renderAgenda();" style="background:none;border:none;cursor:pointer;color:var(--danger);font-size:11px;float:right;">✕</button>
+      </div>
+      <div class="nota-text">${n.texto}</div>
+    </div>`).join('');
+}
+
+function exportarDatos() {
+  const blob = new Blob([JSON.stringify(db,null,2)],{type:'application/json'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'respaldo_expedientes_' + new Date().toISOString().slice(0,10) + '.json';
+  a.click();
+}
+
+function importarDatos(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    try {
+      const datos = JSON.parse(e.target.result);
+      if (!datos.pacientes || !Array.isArray(datos.pacientes)) {
+        alert('❌ El archivo no es un respaldo válido.'); return;
+      }
+      const total = datos.pacientes.length;
+      const accion = confirm(
+        'IMPORTAR RESPALDO\n\n' +
+        'El archivo contiene ' + total + ' paciente(s).\n\n' +
+        '✅ OK = Fusionar (agrega pacientes nuevos, no borra los actuales)\n' +
+        '❌ Cancelar = No hacer nada\n\n' +
+        'Si quieres REEMPLAZAR todo, usa el botón "Reemplazar" en su lugar.'
+      );
+      if (!accion) { event.target.value = ''; return; }
+
+      // FUSIONAR: solo agrega pacientes que no existan por nombre
+      const nombresActuales = db.pacientes.map(p => (p.nombre||'').toLowerCase().trim());
+      let agregados = 0;
+      datos.pacientes.forEach(p => {
+        if (!nombresActuales.includes((p.nombre||'').toLowerCase().trim())) {
+          db.pacientes.push(p);
+          agregados++;
+        }
+      });
+      // Importar datos del psicólogo si no hay ninguno guardado
+      if (datos.psicologo && datos.psicologo.nombre && !db.psicologo.nombre) {
+        db.psicologo = datos.psicologo;
+      }
+      // Fusionar notas evitando duplicados por timestamp
+      if (datos.notas && Array.isArray(datos.notas)) {
+        const tsActuales = new Set(db.notas.map(n => n.ts));
+        datos.notas.forEach(n => { if (!tsActuales.has(n.ts)) db.notas.push(n); });
+        db.notas.sort((a,b) => b.ts - a.ts);
+        db.notas = db.notas.slice(0, 200);
+      }
+      save(); renderInicio(); renderPsicologo();
+      alert('✅ Importación completada.\n' + agregados + ' paciente(s) nuevos agregados.\n' + (total - agregados) + ' ya existían y no se duplicaron.');
+    } catch(err) {
+      alert('❌ Error al leer el archivo. Asegúrate de que sea un respaldo .json válido.');
+    }
+    event.target.value = '';
+  };
+  reader.readAsText(file);
+}
+
+function reemplazarDatos(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    try {
+      const datos = JSON.parse(e.target.result);
+      if (!datos.pacientes || !Array.isArray(datos.pacientes)) {
+        alert('❌ Archivo inválido.'); return;
+      }
+      if (confirm('⚠️ REEMPLAZAR TODOS LOS DATOS\n\nEsto borrará los ' + db.pacientes.length + ' paciente(s) actuales y los reemplazará con los ' + datos.pacientes.length + ' del respaldo.\n\nEsta acción NO se puede deshacer. ¿Continuar?')) {
+        db = datos;
+        save(); renderInicio(); renderPsicologo();
+        alert('✅ Datos reemplazados correctamente. ' + db.pacientes.length + ' paciente(s) cargados.');
+      }
+    } catch(err) { alert('❌ Error al leer el archivo.'); }
+    event.target.value = '';
+  };
+  reader.readAsText(file);
+}
+
+// ======================== EXPORTAR PDF ========================
+function exportarPDF() {
+  const p = editIndex >= 0 ? db.pacientes[editIndex] : leerForm();
+  if (!p.nombre) { alert('Guarda el expediente antes de exportarlo a PDF.'); return; }
+  const psi = db.psicologo;
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({ orientation: 'p', unit: 'mm', format: 'a4' });
+
+  const W = 210, M = 18, CW = W - M * 2;
+  let y = 0;
+
+  const C = {
+    azul: [15,76,117], azulM: [27,108,168], azulCl: [232,244,253],
+    grisCl: [245,247,251], grisL: [220,226,236],
+    blanco: [255,255,255], txt: [26,26,46], muted: [90,98,112]
+  };
+
+  function nuevaPagina() { doc.addPage(); y = 22; }
+  function check(h) { if (y + h > 272) nuevaPagina(); }
+
+  // Encabezado
+  doc.setFillColor(...C.azul); doc.rect(0,0,W,26,'F');
+  doc.setFillColor(...C.azulM); doc.rect(0,20,W,6,'F');
+  doc.setTextColor(255,255,255);
+  doc.setFontSize(15); doc.setFont('helvetica','bold');
+  doc.text('EXPEDIENTE CLINICO PSICOLOGICO', M, 11);
+  doc.setFontSize(8.5); doc.setFont('helvetica','normal');
+  const marca = psi.marca || psi.nombre || 'Hernandez Psicologia Clinica';
+  doc.text(marca, M, 18);
+  doc.text('Generado: ' + new Date().toLocaleDateString('es-MX',{day:'2-digit',month:'long',year:'numeric'}), W-M, 18, {align:'right'});
+  y = 34;
+
+  function seccion(titulo) {
+    check(12);
+    doc.setFillColor(...C.azulCl);
+    doc.roundedRect(M, y, CW, 8, 1.5, 1.5, 'F');
+    doc.setTextColor(...C.azulM); doc.setFontSize(8.5); doc.setFont('helvetica','bold');
+    doc.text(titulo.toUpperCase(), M+4, y+5.5);
+    y += 12;
+  }
+
+  function fila2(l1, v1, l2, v2) {
+    if (!v1 && !v2) return;
+    check(7);
+    const hw = CW/2 - 2, x2 = M + CW/2 + 4;
+    doc.setFontSize(7); doc.setFont('helvetica','bold'); doc.setTextColor(...C.muted);
+    if(v1) doc.text(l1.toUpperCase()+':', M, y);
+    if(v2) doc.text(l2.toUpperCase()+':', x2, y);
+    doc.setFont('helvetica','normal'); doc.setTextColor(...C.txt);
+    if(v1) { const ls = doc.splitTextToSize(String(v1), hw-22); doc.text(ls, M+22, y); }
+    if(v2) { const ls = doc.splitTextToSize(String(v2), hw-22); doc.text(ls, x2+22, y); }
+    y += 6.5;
+  }
+
+  function campo1(label, valor) {
+    if (!valor) return;
+    check(8);
+    doc.setFontSize(7); doc.setFont('helvetica','bold'); doc.setTextColor(...C.muted);
+    doc.text(label.toUpperCase()+':', M, y);
+    doc.setFont('helvetica','normal'); doc.setTextColor(...C.txt);
+    const ls = doc.splitTextToSize(String(valor), CW-28);
+    doc.text(ls, M+28, y);
+    y += Math.max(ls.length*4.5, 6.5);
+  }
+
+  function bloque(label, valor) {
+    if (!valor) return;
+    check(12);
+    doc.setFontSize(7); doc.setFont('helvetica','bold'); doc.setTextColor(...C.muted);
+    doc.text(label.toUpperCase()+':', M, y); y += 5;
+    doc.setFont('helvetica','normal'); doc.setTextColor(...C.txt);
+    doc.setFontSize(8);
+    const ls = doc.splitTextToSize(String(valor), CW);
+    ls.forEach(l => { check(5); doc.text(l, M, y); y += 4.5; });
+    y += 2;
+  }
+
+  function sep() { check(6); doc.setDrawColor(...C.grisL); doc.line(M,y,M+CW,y); y += 6; }
+
+  // PSICÓLOGO
+  if (psi.nombre) {
+    seccion('Datos del Psicologo Tratante');
+    fila2('Nombre', psi.nombre, 'Cedula Prof.', psi.cedula);
+    fila2('Especialidad', psi.especialidad, 'Telefono', psi.tel);
+    if(psi.consultorio) campo1('Consultorio', psi.consultorio);
+    sep();
+  }
+
+  // PACIENTE
+  seccion('Datos Personales del Paciente');
+  fila2('Nombre completo', p.nombre, 'Estatus', p.estatus);
+  fila2('Fecha de nacimiento', p.nacimiento, 'Edad', p.edad ? p.edad+' anos' : '');
+  fila2('Sexo', p.sexo, 'Estado civil', p.ecivil);
+  fila2('Escolaridad', p.escolaridad, 'Ocupacion', p.ocupacion);
+  if(p.primeraConsulta) fila2('Primera consulta', p.primeraConsulta, '', '');
+  sep();
+
+  seccion('Datos de Contacto');
+  fila2('Tel. principal', p.tel, 'Tel. alterno', p.tel2);
+  if(p.email) campo1('Email', p.email);
+  if(p.direccion) campo1('Direccion', p.direccion);
+  if(p.emergency) campo1('Contacto emergencia', p.emergency);
+  sep();
+
+  if(p.motivo) { seccion('Motivo de Consulta'); bloque('', p.motivo); sep(); }
+
+  // DIAGNÓSTICOS
+  if (p.diagnosticos?.length) {
+    seccion('Diagnostico Clinico (' + p.diagnosticos.length + ' diagnostico(s))');
+    p.diagnosticos.forEach(dx => {
+      check(14);
+      doc.setFillColor(...C.grisCl);
+      doc.roundedRect(M, y, CW, 10, 1.5, 1.5, 'F');
+      doc.setFontSize(7.5); doc.setFont('helvetica','bold'); doc.setTextColor(...C.azulM);
+      doc.text('['+dx.sistema+']', M+3, y+4.5);
+      doc.setTextColor(...C.txt);
+      const titulo = (dx.codigo?dx.codigo+' — ':'')+dx.nombre;
+      const tls = doc.splitTextToSize(titulo, CW-30);
+      doc.text(tls[0], M+24, y+4.5);
+      if(dx.notas) { doc.setFont('helvetica','italic'); doc.setTextColor(...C.muted); doc.setFontSize(7); doc.text(dx.notas, M+24, y+8.5); }
+      y += 13;
+    });
+    fila2('Funcionamiento GAF', p.dxGaf, 'Pronostico', p.dxPronostico);
+    bloque('Instrumentos aplicados', p.dxInstrumentos);
+    bloque('Diagnostico diferencial', p.dxDiferencial);
+    sep();
+  }
+
+  // ANTECEDENTES
+  const tieneAnt = p.aEnfermedades||p.aMedicamentos||p.aCirugias||p.aAlergias||p.aTxPrevios||p.aPsiquiatria||p.aSustancias||p.aFamiliaPsi||p.aEventos;
+  if (tieneAnt) {
+    seccion('Antecedentes');
+    bloque('Enfermedades actuales', p.aEnfermedades);
+    bloque('Medicamentos actuales', p.aMedicamentos);
+    bloque('Cirugias / hospitalizaciones', p.aCirugias);
+    if(p.aAlergias) campo1('Alergias', p.aAlergias);
+    bloque('Tratamientos psicologicos previos', p.aTxPrevios);
+    bloque('Tratamiento psiquiatrico', p.aPsiquiatria);
+    fila2('Riesgo suicida', p.aSuicidio, 'Violencia/abuso', p.aViolencia);
+    bloque('Consumo de sustancias', p.aSustancias);
+    bloque('Antecedentes familiares', p.aFamiliaPsi);
+    bloque('Eventos vitales significativos', p.aEventos);
+    sep();
+  }
+
+  // PLAN TERAPÉUTICO
+  if (p.expEnfoque||p.expObjetivos||p.expIntervenciones) {
+    seccion('Plan Terapeutico');
+    fila2('Enfoque', p.expEnfoque, 'Frecuencia', p.expFrecuencia);
+    bloque('Objetivos terapeuticos', p.expObjetivos);
+    bloque('Intervenciones planeadas', p.expIntervenciones);
+    sep();
+  }
+
+  // NOTAS DE SESIÓN
+  if (p.notas?.length) {
+    seccion('Notas de Sesion (' + p.notas.length + ')');
+    p.notas.slice(0,15).forEach(n => {
+      check(16);
+      doc.setFillColor(...C.azulM);
+      doc.rect(M, y, 2.5, 11, 'F');
+      doc.setFontSize(7); doc.setFont('helvetica','bold'); doc.setTextColor(...C.muted);
+      doc.text(n.fecha||'', M+5, y+4);
+      doc.setFont('helvetica','normal'); doc.setTextColor(...C.txt); doc.setFontSize(8);
+      const ls = doc.splitTextToSize(n.texto, CW-8);
+      ls.slice(0,4).forEach((l,li) => { check(5); doc.text(l, M+5, y+8+li*4); });
+      y += Math.max(14, 9+Math.min(ls.length,4)*4);
+    });
+    if(p.notas.length>15) { doc.setFontSize(7.5); doc.setTextColor(...C.muted); doc.text('...y '+(p.notas.length-15)+' notas adicionales en el sistema.', M, y); y+=7; }
+    sep();
+  }
+
+  if(p.expSeguridad) { seccion('Plan de Seguridad'); bloque('', p.expSeguridad); sep(); }
+  if(p.expObservaciones) { seccion('Observaciones'); bloque('', p.expObservaciones); }
+
+  // PIE DE PÁGINA
+  const total = doc.internal.getNumberOfPages();
+  for (let i=1; i<=total; i++) {
+    doc.setPage(i);
+    doc.setFillColor(...C.azul); doc.rect(0,287,W,10,'F');
+    doc.setTextColor(255,255,255); doc.setFontSize(6.5); doc.setFont('helvetica','normal');
+    doc.text('Expediente Clinico Psicologico — Documento confidencial', M, 293);
+    if(psi.nombre) doc.text(psi.nombre+(psi.cedula?' | Ced. '+psi.cedula:''), W/2, 293, {align:'center'});
+    doc.text('Pag. '+i+' / '+total, W-M, 293, {align:'right'});
+  }
+
+  const nombre = 'Expediente_'+(p.nombre||'paciente').replace(/[^a-zA-ZáéíóúÁÉÍÓÚñÑ0-9\s]/g,'').replace(/\s+/g,'_')+'_'+new Date().toISOString().slice(0,10)+'.pdf';
+  doc.save(nombre);
+}
+
+document.getElementById('modal-paciente').addEventListener('click', function(e) { if(e.target===this) cerrarModal(); });
+renderInicio();
+renderPsicologo();
+</script>
+</body>
+</html>
